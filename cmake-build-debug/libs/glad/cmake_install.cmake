@@ -1,4 +1,4 @@
-# Install script for directory: /home/sofi/Desktop/rg/project_base/libs/glad
+# Install script for directory: /media/sofi/6F45F7C36C41AC25/rg/project_base/libs/glad
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

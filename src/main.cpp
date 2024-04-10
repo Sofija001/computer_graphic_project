@@ -175,6 +175,11 @@ int main() {
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
 
+    // enable face culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+    glFrontFace(GL_CW);
+
     // build and compile shaders
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
@@ -349,7 +354,7 @@ int main() {
         ourShader.setVec3("dirLight.ambient", dirLight.ambient);
         ourShader.setVec3("dirLight.diffuse", dirLight.diffuse);
         ourShader.setVec3("dirLight.specular", dirLight.specular);
-        
+
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
         // view/projection transformations
@@ -360,6 +365,7 @@ int main() {
         ourShader.setMat4("view", view);
 
         // render the loaded model
+
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model,
                                programState->backpackPosition); // translate it down so it's at the center of the scene
@@ -376,6 +382,7 @@ int main() {
         ourModel2.Draw(ourShader);
 
         // render the loaded model
+        glDisable(GL_CULL_FACE);
         glm::mat4 building = glm::mat4(1.0f);
         building  = glm::translate(building ,
                                    programState->Position_building); // translate it down so// it's at the center of the scene
@@ -383,7 +390,7 @@ int main() {
         building  = glm::scale(building , glm::vec3(programState->Scale_building));    // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", building );
         ourModel3.Draw(ourShader);
-
+        glEnable(GL_CULL_FACE);
 
         // draw skybox
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
@@ -400,6 +407,7 @@ int main() {
         glDepthFunc(GL_LESS); // set depth function back to default
 
         // draw plane
+        glDisable(GL_CULL_FACE);
         textureShader.use();
         projection = glm::perspective(glm::radians(programState->camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         view = programState->camera.GetViewMatrix();
@@ -411,6 +419,7 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, planeTexture);
         textureShader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        glEnable(GL_CULL_FACE);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);

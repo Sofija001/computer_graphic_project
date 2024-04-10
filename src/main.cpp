@@ -29,6 +29,8 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 unsigned int loadCubemap(vector<std::string> faces);
 
+unsigned int loadTexture(char const * path);
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -170,6 +172,7 @@ int main() {
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
+    Shader textureShader("resources/shaders/texture.vs", "resources/shaders/texture.fs");
 
     float skyboxVertices[] = {
             // positions
@@ -216,6 +219,18 @@ int main() {
             1.0f, -1.0f,  1.0f
     };
 
+
+    float planeVertices[] = {
+            // positions          // texture Coords
+            5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+            -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
+            -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+
+            5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+            -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+            5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+    };
+
     // load models
     // -----------
     Model ourModel("resources/objects/models/skyscraper/scene.gltf");
@@ -224,7 +239,7 @@ int main() {
     Model ourModel2("resources/objects/models/flamingo/uploads_files_2562862_Falmingo_Baloon.obj");
     ourModel2.SetShaderTextureNamePrefix("material.");
 
-    Model ourModel3("resources/objects/models/building/d1.obj");
+    Model ourModel3("resources/objects/models/soliter/d1 maket.obj");
     ourModel3.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
@@ -247,6 +262,21 @@ int main() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
+    // plane VAO
+    unsigned int planeVAO, planeVBO;
+    glGenVertexArrays(1, &planeVAO);
+    glGenBuffers(1, &planeVBO);
+    glBindVertexArray(planeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), &planeVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    // load textures
+    unsigned int planeTexture = loadTexture(FileSystem::getPath("resources/textures/ice.jpg").c_str());
+
     // skybox textures
     stbi_set_flip_vertically_on_load(false);
     vector<std::string> faces
@@ -263,6 +293,10 @@ int main() {
     // shader configuration
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
+
+    textureShader.use();
+    textureShader.setInt("texture1", 0);
+
 
 
     // draw in wireframe
@@ -325,10 +359,12 @@ int main() {
         // render the loaded model
         glm::mat4 building = glm::mat4(1.0f);
         building  = glm::translate(building ,
-                                   programState->Position_building); // translate it down so it's at the center of the scene
+                                   programState->Position_building); // translate it down so// it's at the center of the scene
+        building = glm::rotate(building, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         building  = glm::scale(building , glm::vec3(programState->Scale_building));    // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", building );
         ourModel3.Draw(ourShader);
+
 
         // draw skybox
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
@@ -343,6 +379,19 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
+
+        // draw plane
+        textureShader.use();
+        projection = glm::perspective(glm::radians(programState->camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        view = programState->camera.GetViewMatrix();
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(5.0f, 1.0f, 5.0f));
+        textureShader.setMat4("projection", projection);
+        textureShader.setMat4("view", view);
+        glBindVertexArray(planeVAO);
+        glBindTexture(GL_TEXTURE_2D, planeTexture);
+        textureShader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
@@ -364,7 +413,9 @@ int main() {
 
     // deallocate
     glDeleteVertexArrays(1, &skyboxVAO);
+    glDeleteVertexArrays(1, &planeVAO);
     glDeleteBuffers(1, &skyboxVAO);
+    glDeleteBuffers(1, &planeVAO);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -494,6 +545,43 @@ unsigned int loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
+unsigned int loadTexture(char const * path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
 
     return textureID;
 }

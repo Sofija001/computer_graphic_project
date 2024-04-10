@@ -59,10 +59,12 @@ struct ProgramState {
     bool ImGuiEnabled = false;
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
-    glm::vec3 backpackPosition = glm::vec3(0.0f);
-    float backpackScale = 0.3f;
-    glm::vec3 Position_flamingo = glm::vec3(0.5f);
-    float Scale_flamingo = 0.6f;
+    glm::vec3 backpackPosition = glm::vec3(0.2f);
+    float backpackScale = 0.2f;
+    glm::vec3 Position_flamingo = glm::vec3(0.6f);
+    float Scale_flamingo = 0.1f;
+    glm::vec3 Position_building = glm::vec3(1.6f);
+    float Scale_building = 0.7f;
     PointLight pointLight;
     ProgramState()
             : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
@@ -222,6 +224,9 @@ int main() {
     Model ourModel2("resources/objects/models/flamingo/uploads_files_2562862_Falmingo_Baloon.obj");
     ourModel2.SetShaderTextureNamePrefix("material.");
 
+    Model ourModel3("resources/objects/models/building/d1.obj");
+    ourModel3.SetShaderTextureNamePrefix("material.");
+
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
     pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
@@ -312,10 +317,18 @@ int main() {
         // render the loaded model
         glm::mat4 flamingo = glm::mat4(1.0f);
         flamingo  = glm::translate(flamingo ,
-                               programState->backpackPosition); // translate it down so it's at the center of the scene
-        flamingo  = glm::scale(flamingo , glm::vec3(programState->backpackScale));    // it's a bit too big for our scene, so scale it down
+                               programState->Position_flamingo); // translate it down so it's at the center of the scene
+        flamingo  = glm::scale(flamingo , glm::vec3(programState->Scale_flamingo));    // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", flamingo );
         ourModel2.Draw(ourShader);
+
+        // render the loaded model
+        glm::mat4 building = glm::mat4(1.0f);
+        building  = glm::translate(building ,
+                                   programState->Position_building); // translate it down so it's at the center of the scene
+        building  = glm::scale(building , glm::vec3(programState->Scale_building));    // it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", building );
+        ourModel3.Draw(ourShader);
 
         // draw skybox
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content

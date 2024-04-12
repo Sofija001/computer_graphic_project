@@ -72,8 +72,8 @@ struct ProgramState {
     float backpackScale = 0.2f;
     glm::vec3 Position_flamingo = glm::vec3(0.6f);
     float Scale_flamingo = 0.1f;
-    glm::vec3 Position_building = glm::vec3(1.6f);
-    float Scale_building = 0.7f;
+    glm::vec3 Position_building = glm::vec3(5.0f);
+    float Scale_building = 0.9f;
     PointLight pointLight;
     ProgramState()
             : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
@@ -185,6 +185,7 @@ int main() {
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader textureShader("resources/shaders/texture.vs", "resources/shaders/texture.fs");
+    Shader blendingShader("resources/shaders/blending.vs", "resources/shaders/blending.fs");
 
     float skyboxVertices[] = {
             // positions
@@ -251,7 +252,7 @@ int main() {
     Model ourModel2("resources/objects/models/flamingo/uploads_files_2562862_Falmingo_Baloon.obj");
     ourModel2.SetShaderTextureNamePrefix("material.");
 
-    Model ourModel3("resources/objects/models/soliter/d1 maket.obj");
+    Model ourModel3("resources/objects/models/snowmobil/snowmo_lowPoly.obj");
     ourModel3.SetShaderTextureNamePrefix("material.");
 
     PointLight& pointLight = programState->pointLight;
@@ -269,6 +270,33 @@ int main() {
     dirLight.ambient = glm::vec3(0.4f);
     dirLight.diffuse = glm::vec3(0.4f);
     dirLight.specular = glm::vec3(0.5f);
+
+    // snow vertices
+    float transparentVertices[] = {
+            // positions         // texture Coords
+            0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
+            0.0f, -0.5f,  0.0f,  0.0f,  0.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
+
+            0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  1.0f
+    };
+
+    // snow positions
+    vector<glm::vec3> snowPositions;
+    vector<float> snowRotation;
+
+    for (int i = 0; i < 40000; i++) {
+        float x = static_cast<float>(rand() % 201 - 100); // x koordinate u rasponu [-100, 100]
+        float y = static_cast<float>(rand() % 101) * 0.1f; // y koordinate u rasponu [0, 10]
+        float z = static_cast<float>(rand() % 201 - 100); // z koordinate u rasponu [-100, 100]
+
+        snowPositions.push_back(glm::vec3(x, y, z));
+        snowRotation.push_back(static_cast<float>(i % 180)); // Rotacija u rasponu [0, 179]
+    }
+
+
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
@@ -292,8 +320,25 @@ int main() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
+    // transparent VAO VBO
+    unsigned int transparentVAO, transparentVBO;
+    glGenVertexArrays(1, &transparentVAO);
+    glGenBuffers(1, &transparentVBO);
+    glBindVertexArray(transparentVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+
     // load textures
     unsigned int planeTexture = loadTexture(FileSystem::getPath("resources/textures/ice.jpg").c_str());
+        //snow texture
+    unsigned int snowTexture = loadTexture(FileSystem::getPath("resources/textures/snegbezpozadine.png").c_str());
+
 
     // skybox textures
     stbi_set_flip_vertically_on_load(false);
@@ -390,6 +435,25 @@ int main() {
         building  = glm::scale(building , glm::vec3(programState->Scale_building));    // it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", building );
         ourModel3.Draw(ourShader);
+        glEnable(GL_CULL_FACE);
+
+
+        // snow
+        blendingShader.use();
+        glm::mat4 snowM = glm::mat4(1.0f);
+        blendingShader.setMat4("projection", projection);
+        blendingShader.setMat4("view", view);
+        glBindVertexArray(transparentVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, snowTexture);
+        for (unsigned int i = 0; i < 40000; i++) {
+            snowM = glm::mat4(1.0f);
+            snowM = glm::scale(snowM, glm::vec3(0.8f));
+            snowM = glm::translate(snowM, snowPositions[i]);
+            snowM = glm::rotate(snowM ,glm::radians(snowRotation[i]), glm::vec3(0.0f ,1.0f, 0.0f));
+            blendingShader.setMat4("model", snowM);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
         glEnable(GL_CULL_FACE);
 
         // draw skybox
